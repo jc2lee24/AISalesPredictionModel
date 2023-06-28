@@ -19,7 +19,7 @@ public class LinearRegressionFunction {
             prediction += thetaVector[i] * featureVector[i];
         }
 
-        return prediction + 63706.5;
+        return prediction;
     }
 
 
