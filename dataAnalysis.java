@@ -1,24 +1,16 @@
-// import jxl.Cell;
 import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
-// import jxl.format.Colour;
 import jxl.write.*;
-// import jxl.write.Number;
+import jxl.write.Number;
 import jxl.write.biff.RowsExceededException;
 import jxl.read.biff.BiffException;
 
-import java.io.BufferedWriter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.io.File;
-import java.io.FileWriter;
-// import java.io.FileReader;
-// import java.io.BufferedReader;
-// import java.io.BufferedWriter;
-// import java.io.FileWriter;
-import java.io.IOException;
+
+import java.io.*;
 
 public class dataAnalysis implements Runnable{
 
@@ -59,75 +51,22 @@ public class dataAnalysis implements Runnable{
     private Sheet combinedDataSheet;
 
     //create sheets
-    private Sheet comparisonSheet;
-    private Sheet predictSheet;
-
-    private excelCombiner ec;
-
-    //create booleans to run in thread
-    private boolean combine;
-    private boolean createTrainData;
-    private boolean createThetas;
-    private boolean createBookedAmountLabels;
-    private boolean createAcvLabels;
-    private boolean scaleData;
-    private boolean trainData;
-
-    private List<Double[]> trainDataList;
-    private double[] thetas;
-    private List<Double> createBookedAmountsList;
-    private List<Double> createAcvList;
-    private List<Double[]> createScaleDataList;
-    private LinearRegressionFunction trainedFunction;
-
-    private List<Double[]> getTrainDataList;
-    private double[] getThetas;
-    private List<Double> getLabels;
-    private List<Double[]> getScaleDataList;
-    private double alpha;
+    private WritableSheet comparisonSheet;
+    private WritableSheet predictSheet;
+   
 
     //constructor
     public dataAnalysis(){
         //instantiate workbooks and sheets
         try {
-            //read workbooks
-            winLossExcel = Workbook.getWorkbook(new File(WIN_LOSS));
-            ACVPillarExcel = Workbook.getWorkbook(new File(ACV_PILLAR));
-            allSRExcel = Workbook.getWorkbook(new File(ALL_SRS));
-            analyzerBookingsExcel = Workbook.getWorkbook(new File(ANALYZER_BOOKINGS));
-
             //write workbooks
             comparisonExcel = Workbook.createWorkbook(new File(ACCURACY_TEST));
             predictExcel = Workbook.createWorkbook(new File(PREDICTIONS));
 
-            //get sheets from workbooks
-            winLossSheet = winLossExcel.getSheet(0);
-            ACVPillarSheet = ACVPillarExcel.getSheet(0);
-            allSRSheet = allSRExcel.getSheet(0);
-            analyzerBookingsSheet = analyzerBookingsExcel.getSheet(0);
-
             //create sheets from writable workbooks
             comparisonSheet = comparisonExcel.createSheet("Compare", 0);
             predictSheet = predictExcel.createSheet("Predictions", 0);
-            
-            //create excel combiner object
-            ec = new excelCombiner(winLossSheet, ACVPillarSheet, allSRSheet, analyzerBookingsSheet, comparisonSheet, predictSheet);    
-            
-            //create combined data excel and sheets
-            combinedDataExcel = Workbook.getWorkbook(new File(COMBINED_DATA));
-            combinedDataSheet = combinedDataExcel.getSheet(0);
-
-            //instantiate booleans for threading
-            boolean combine = false;
-            boolean createTrainData = false;
-            boolean createThetas = false;
-            boolean createBookedAmountLabels = false;
-            boolean createAcvLabels = false;
-            boolean scaleData = false;
-            boolean trainData = false;
-
-        } catch (BiffException e) {
-            e.printStackTrace();
+                        
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -137,6 +76,20 @@ public class dataAnalysis implements Runnable{
     //calls combineData from excelCombiner.java
     public void combineFiles(){
         try{
+            //read workbooks
+            winLossExcel = Workbook.getWorkbook(new File(WIN_LOSS));
+            ACVPillarExcel = Workbook.getWorkbook(new File(ACV_PILLAR));
+            allSRExcel = Workbook.getWorkbook(new File(ALL_SRS));
+            analyzerBookingsExcel = Workbook.getWorkbook(new File(ANALYZER_BOOKINGS));
+
+            //get sheets from workbooks
+            winLossSheet = winLossExcel.getSheet(0);
+            ACVPillarSheet = ACVPillarExcel.getSheet(0);
+            allSRSheet = allSRExcel.getSheet(0);
+            analyzerBookingsSheet = analyzerBookingsExcel.getSheet(0);
+            
+            excelCombiner ec = new excelCombiner(winLossSheet, ACVPillarSheet, allSRSheet, analyzerBookingsSheet, comparisonSheet, predictSheet);    
+
             ec.combine();
 
             combinedDataExcel = Workbook.getWorkbook(new File(COMBINED_DATA));
@@ -154,42 +107,54 @@ public class dataAnalysis implements Runnable{
         }
     }
 
-    public void runCombineFiles(){
-        combine = true;
+    //if data already combined, instantiate excel and sheet
+    public void getCombinedFiles(){
+        try {
+            combinedDataExcel = Workbook.getWorkbook(new File(COMBINED_DATA));
+            combinedDataSheet = combinedDataExcel.getSheet(0);
+        } catch (BiffException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
     //creates arraylist of array of data to feed to model
-    public List<Double[]> createTrainData(){
-        List<Double[]> dataset = new ArrayList<>();
+    public ArrayList<Double[]> createTrainData(){
+        ArrayList<Double[]> dataset = new ArrayList<>();
 
-        for(int i = 0; i < combinedDataSheet.getRows(); i++){
-            Double[] addData = new Double[22];
-            for(int j = 2; j < 25; j++){
+        for(int i = 1; i < combinedDataSheet.getRows(); i++){
+            Double[] addData = new Double[6];
+            for(int j = 6; j < 12; j++){
                 Cell readCell = combinedDataSheet.getCell(j, i);
                 double num = Double.parseDouble(readCell.getContents());
-                addData[j-2] = num;
+                addData[j-6] = num;
+            }
+            for(int j = 24; j < 23; j++){
+                Cell readCell = combinedDataSheet.getCell(j, i);
+                double num = Double.parseDouble(readCell.getContents());
+                addData[j-10] = num;
             }
 
             dataset.add(addData);
         }
 
+        // for(int i = 0; i < dataset.size(); i++){
+        //     for(int j = 0; j < dataset.get(i).length; j++){
+        //         System.out.print(dataset.get(i)[j] + " ");
+        //     }
+        //     System.out.println("\n");
+        // }
+
         return dataset;
-    }
-
-    public void runCreateTrainData(){
-        createTrainData = true;
-    }
-
-    public List<Double[]> getTrainData(){
-        return this.trainDataList;
     }
 
 
     //creates the original theta values (array of 0.0)
     public double[] createThetas(){
-        int size = combinedDataSheet.getColumns() - 2;
-        double[] thetas = new double[]{};
+        int size = 6;
+        double[] thetas = new double[size];
 
         for(int i = 0; i < size; i++){
             thetas[i] = 0.0;
@@ -197,20 +162,35 @@ public class dataAnalysis implements Runnable{
 
         return thetas;
     }
-   
-    public void runCreateThetas(){
-        createThetas = true;
-    }
 
-    public double[] getThetas(){
+    public double[] readThetas() throws IOException{
+        FileReader fr = new FileReader(THETA_STORE);
+        BufferedReader bufferRead = new BufferedReader(fr);
+
+        int size = 6;
+
+
+        double[] thetas = new double[size];
+        
+        String str = bufferRead.readLine();
+        String[] split = str.split(" ");
+
+        for(int i = 0; i < size; i++){
+            //read file and add it to thetas[]
+            thetas[i] = Double.parseDouble(split[i]);
+
+        }
+
+        bufferRead.close();
+
         return thetas;
     }
 
 
     //creates array of booked amount values to compare to predictions
-    public List<Double> createBookedAmountLabels(){
-        List<Double> labels = new ArrayList<Double>();
-        for(int i = 0; i < combinedDataSheet.getRows(); i++){
+    public ArrayList<Double> createBookedAmountLabels(){
+        ArrayList<Double> labels = new ArrayList<Double>();
+        for(int i = 1; i < combinedDataSheet.getRows(); i++){
             Cell labelCell = combinedDataSheet.getCell(23, i);
             double addLabel = Double.parseDouble(labelCell.getContents());
             labels.add(addLabel); 
@@ -220,19 +200,12 @@ public class dataAnalysis implements Runnable{
         return labels;
     }
 
-    public void runCreateBookedAmountLabels(){
-        createBookedAmountLabels = true;
-    }
-    
-    public List<Double> getBookedAmountLabels(){
-        return createBookedAmountsList;
-    }
 
 
     //creates array of ACV values to compare to predictions
-    public List<Double> createAcvLabels(){
-        List<Double> labels = new ArrayList<Double>();
-        for(int i = 0; i < combinedDataSheet.getRows(); i++){
+    public ArrayList<Double> createAcvLabels(){
+        ArrayList<Double> labels = new ArrayList<Double>();
+        for(int i = 1; i < combinedDataSheet.getRows(); i++){
             Cell labelCell = combinedDataSheet.getCell(12, i);
             double addLabel = Double.parseDouble(labelCell.getContents());
             labels.add(addLabel); 
@@ -242,37 +215,22 @@ public class dataAnalysis implements Runnable{
         return labels;
     }
 
-    public void runCreateAcvLables(){
-        createAcvLabels = true;
-    }
-    
-    public List<Double> getAcvLabels(){
-        return createAcvList;
-    }
 
 
     //scales the dataset
-    public List<Double[]> scaleData(List<Double[]> dataset){
+    public ArrayList<Double[]> scaleData(ArrayList<Double[]> dataset){
         Function<Double[], Double[]> scalingFunc;
-        List<Double[]> scaledDataset;    
+        ArrayList<Double[]> scaledDataset;    
 
         scalingFunc = FeaturesScaling.createFunction(dataset);
-        scaledDataset = dataset.stream().map(scalingFunc).collect(Collectors.toList());
+        scaledDataset = (ArrayList<Double[]>) dataset.stream().map(scalingFunc).collect(Collectors.toList());
 
         return scaledDataset;
     }
 
-    public void runScaleData(){
-        scaleData = true;
-    }
-    
-    public List<Double[]> getScaleData(){
-        return createScaleDataList;
-    }
-
 
     //creates functions that the model will train
-    public LinearRegressionFunction trainData(double[] thetas, List<Double> labels, List<Double[]> scaledDataset, double alpha) throws Exception{
+    public LinearRegressionFunction trainData(double[] thetas, List<Double> labels, List<Double[]> scaledDataset, double alpha, int acvOrBooked, double acvIntercept, double bookedIntercept) throws Exception{
         FileWriter fw;
 
         fw = new FileWriter(THETA_STORE);
@@ -281,7 +239,11 @@ public class dataAnalysis implements Runnable{
         LinearRegressionFunction targetFunction =  new LinearRegressionFunction(thetas);
 
         for (int i = 0; i < 10000; i++) {
-            targetFunction = LinearRegressionFunction.train(targetFunction, scaledDataset, labels, alpha);
+            targetFunction = LinearRegressionFunction.train(targetFunction, scaledDataset, labels, alpha, acvOrBooked, acvIntercept, bookedIntercept);
+
+            // if(i % 100 == 0){
+            //     System.out.println(i/100 + "% complete");
+            // }
         }
 
         String thetaWrite = targetFunction.thetasString();
@@ -290,29 +252,156 @@ public class dataAnalysis implements Runnable{
 
         bufferWrite.close();
 
+
+        // System.out.println("trained");
+        // System.out.println(thetas);
+
         return targetFunction;
     }
 
-    public void runTrainData(){
-        trainData = true;
-    }
-    
-    public LinearRegressionFunction getTrainedFunction(){
-        return trainedFunction;
-    }
 
     //creates predictions
-    public void predict() throws Exception{
+    public ArrayList<Double> predict(LinearRegressionFunction targetFunction, List<Double[]> dataset, int acvOrBooked, double intercept) throws Exception{
+        ArrayList<Double> predictions = new ArrayList<Double>();
 
+        for(int i = 0; i < dataset.size() - 1; i++){
+            Function<Double[], Double[]> scalingFunc = FeaturesScaling.createFunction(dataset);
+            Double[] scaledFeatureVector = scalingFunc.apply(dataset.get(i));
+            double predicted = 0;
+            if(acvOrBooked == 0){
+                predicted = targetFunction.applyACV(scaledFeatureVector, intercept);   
+            }
+            else{
+                predicted = targetFunction.applyBookedAmounts(scaledFeatureVector, intercept);
+            }
+            predictions.add(predicted);
+        }
+
+        return predictions;
+    }
+
+    
+    //public void writePredictions(ArrayList<Double> acvPredict, ArrayList<Double> bookPredict, ArrayList<Double> acvActual, ArrayList<Double> bookedActual) throws WriteException, IOException{
+    public void writePredictions(ArrayList<Double> acvPredict, ArrayList<Double> acvActual) throws WriteException, IOException{
+
+        ArrayList<Double> acvAccuracies = new ArrayList<>();
+        //ArrayList<Double> bookAccuracies = new ArrayList<>();
+
+        for(int i = 0; i < acvPredict.size(); i++){
+            Number predictCell = new Number(3, i + 1,  acvPredict.get(i));
+            predictSheet.addCell(predictCell);
+
+            // Number predictCell2 = new Number(6, i + 1, bookPredict.get(i));
+            // predictSheet.addCell(predictCell2);
+        }
+
+        for(int i = 1; i < combinedDataSheet.getRows(); i++){
+            Number id = new Number(0, i, Integer.parseInt(combinedDataSheet.getCell(0, i).getContents())); 
+            Label customer = new Label(1, i, combinedDataSheet.getCell(1, i).getContents());
+
+            Number realACV = new Number(4, i, Double.parseDouble(combinedDataSheet.getCell(12, i).getContents()));
+            //Number realBooked = new Number(7, i, Double.parseDouble(combinedDataSheet.getCell(12, i).getContents()));
+
+            predictSheet.addCell(id);
+            predictSheet.addCell(customer);
+            predictSheet.addCell(realACV);
+            // predictSheet.addCell(realBooked);
+        }
+        
+        double highestAccuracy = 0;
+
+        for(int i = 0; i < acvActual.size() - 1; i++){
+            double acvAccuracy = 0;
+            //double bookedAccuracy = 0;
+            if(Math.abs(acvActual.get(i)) < Math.abs(acvPredict.get(i))){
+                acvAccuracy = acvActual.get(i) / acvPredict.get(i);
+            }
+            else{
+                acvAccuracy = acvPredict.get(i) / acvActual.get(i);
+            }
+            if(acvAccuracy < 0){
+                acvAccuracy = 0;
+            }
+
+            if(acvAccuracy > highestAccuracy){
+                highestAccuracy = acvAccuracy;
+            }
+
+            acvAccuracies.add(acvAccuracy);
+
+            Number addAcvAccuracy = new Number(5, i + 1, acvAccuracy);
+            
+
+            // if(bookedActual.get(i) < bookPredict.get(i)){
+            //     bookedAccuracy = bookedActual.get(i) / bookPredict.get(i);
+            // }
+            // else{
+            //     bookedAccuracy = bookPredict.get(i) / bookedActual.get(i);
+            // }
+            // if(bookedAccuracy < 0){
+            //     bookedAccuracy = 0;
+            // }
+
+            // bookAccuracies.add(bookedAccuracy);
+            
+            // Number addBookedAccuracy = new Number(8, i + 1, bookedAccuracy);
+
+            predictSheet.addCell(addAcvAccuracy);
+            //predictSheet.addCell(addBookedAccuracy);
+        }
+
+        double totalAcvAccuracy = 0;
+        for(int i = 0; i < acvAccuracies.size() - 1; i++){
+            totalAcvAccuracy += acvAccuracies.get(i);
+        }
+        double avgAcvAccuracy = totalAcvAccuracy / acvAccuracies.size();
+
+
+        // double totalBookAccuracy = 0;
+        // for(int i = 0; i < bookAccuracies.size() - 1; i++){
+        //     totalBookAccuracy += bookAccuracies.get(i);
+        // }
+        // double avgBookAccuracy = totalBookAccuracy / bookAccuracies.size();
+
+        System.out.println("ACV accuracy: " + avgAcvAccuracy);
+        // System.out.println("Booking accuracy: " + avgBookAccuracy);
+        
+        double totalPredict = 0;
+        double totalAct = 0;
+        double diff = 0;
+
+        for(int i = 0; i < acvPredict.size(); i++){
+            totalPredict += acvPredict.get(i);
+        }
+        
+        for(int i = 0; i < acvActual.size(); i++){
+            totalAct += acvAccuracies.size();
+        }
+
+        if(totalAct > totalPredict){
+            System.out.println("overall too low");
+            diff = totalAct - totalPredict;
+        }
+
+        else{
+            System.out.println("overall too high");
+            diff = totalPredict - totalAct;
+        }
+
+        double avg = diff / acvActual.size();
+
+        System.out.println("average diff " + avg);
+
+        System.out.println("best accuracy is " + highestAccuracy);
+
+
+        predictExcel.write();
     }
 
 
-    public void getInfo(List<Double[]> getTrainDataList, double[] getThetas, List<Double> getLabels, List<Double[]> getScaleDataList, double alpha){
-        this.getTrainDataList = getTrainDataList;
-        this.getThetas = getThetas;
-        this.getLabels = getLabels;
-        this.getScaleDataList = getScaleDataList;
-        this.alpha = alpha;
+    public void closeExcel() throws WriteException, IOException{
+        predictExcel.close();
+        comparisonExcel.close();
     }
 
 
@@ -325,51 +414,14 @@ public class dataAnalysis implements Runnable{
                 break;
             }
             
-            //short timer - updates every 100 milliseconds
+            //update timer - updates every 200 milliseconds
             try{
-                Thread.sleep(100);
+                Thread.sleep(200);
             } catch(InterruptedException ex){
                 Thread.currentThread().interrupt();
             }
-            if(combine){
-                //returns nothing
-                this.combineFiles();
-                combine = false;
-            }
-            if(createTrainData){
-                //returns arrayList "trainData"
-                this.trainDataList = this.createTrainData();
-                createTrainData = false;
-            }
-            if(createThetas){
-                //returns arrayList "theatas"
-                this.thetas = this.createThetas();
-                createThetas = false;
-            }
-            if(createBookedAmountLabels){
-                //returns arrayList of labels for booked amounts
-                this.createBookedAmountsList = this.createBookedAmountLabels();
-                createBookedAmountLabels = false;
-            }
-            if(createAcvLabels){
-                //returns arrayList of labels for ACV
-                this.createAcvList = this.createAcvLabels();
-                createAcvLabels = false;
-            }
-            if(scaleData){
-                //returns array of scaled data
-                this.createScaleDataList = this.scaleData(getTrainDataList);
-                scaleData = false;
-            }
-            if(trainData){
-                //returns trained function 
-                try{
-                    this.trainedFunction = this.trainData(getThetas, getLabels, getScaleDataList, alpha);
-                } catch(Exception e){
-                    e.printStackTrace();
-                }
-                trainData = false;
-            }
+          
+        
         }
     }
 }
