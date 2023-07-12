@@ -9,17 +9,37 @@ public class LinearRegressionFunction {
         this.thetaVector = Arrays.copyOf(thetaVector, thetaVector.length);
     }
 
-    public Double apply(Double[] featureVector){
+    
+    public Double applyACV(Double[] featureVector, double intercept){
+        //best intercept is 2081.79 so far
+
+        //first coefficient must be one for linReg
+        assert featureVector[0] == 1.0;
+
+        //linReg function
+        double prediction = 0;
+        for(int i = 0; i < thetaVector.length - 1; i++){
+            // System.out.println(i);
+            // System.out.println(featureVector[i]);
+            prediction += thetaVector[i] * featureVector[i];
+        }
+
+        return prediction + intercept;
+    }
+
+    public Double applyBookedAmounts(Double[] featureVector, double intercept){
         //first coefficient must be one for linReg
         assert featureVector[0] == 1.0;
 
         //linReg function
         double prediction = 0;
         for(int i = 0; i < thetaVector.length; i++){
+            // System.out.println(i);
+            // System.out.println(featureVector[i]);
             prediction += thetaVector[i] * featureVector[i];
         }
 
-        return prediction;
+        return prediction + intercept;
     }
 
 
@@ -59,7 +79,8 @@ public class LinearRegressionFunction {
     }
 
 
-    public static LinearRegressionFunction train(LinearRegressionFunction targetFunction, List<Double[]> dataset, List<Double> labels, double alpha){
+    public static LinearRegressionFunction train(LinearRegressionFunction targetFunction, List<Double[]> dataset, List<Double> labels, double alpha, int acvOrBooked, double acvIntercept, double bookedIntercept){
+        //acvOrBooked: 0 = acv, 1 = bookedAmount
         //dataset is what is fed in, labels are the true outcomes
         
         int m = dataset.size();
@@ -67,12 +88,18 @@ public class LinearRegressionFunction {
         double[] newThetaVector = new double[thetaVector.length];
 
         // compute the new theta of each element of the theta array
-        for (int j = 0; j < thetaVector.length; j++) {
+        for (int j = 0; j < thetaVector.length - 1; j++) {
             // summarize the error gap * feature
             double sumErrors = 0;
             for (int i = 0; i < m; i++) {
                 Double[] featureVector = dataset.get(i);
-                double error = targetFunction.apply(featureVector) - labels.get(i);
+                double error = 0;
+                if(acvOrBooked == 0){
+                    error = targetFunction.applyACV(featureVector, acvIntercept) - labels.get(i);
+                }
+                else{
+                    error = targetFunction.applyBookedAmounts(featureVector, bookedIntercept) - labels.get(i);
+                }
                 sumErrors += error * featureVector[j];
             }
 
