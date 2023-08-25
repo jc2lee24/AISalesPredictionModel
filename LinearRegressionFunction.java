@@ -9,41 +9,33 @@ public class LinearRegressionFunction {
         this.thetaVector = Arrays.copyOf(thetaVector, thetaVector.length);
     }
 
-    
-    public Double applyACV(Double[] featureVector, double intercept){
-        //best intercept is 2081.79 so far
-
+    public Double apply(Double[] featureVector){
         //first coefficient must be one for linReg
         assert featureVector[0] == 1.0;
 
         //linReg function
         double prediction = 0;
-        for(int i = 0; i < thetaVector.length - 1; i++){
+        // System.out.println("theta length: " + thetaVector.length);
+        // System.out.println("feature length: " + featureVector.length);
+
+        for(int i = 0; i < featureVector.length; i++){
+            // System.out.println("Theta: " + thetaVector[i]);
+            // System.out.println("feature: " + featureVector[i]);
             // System.out.println(i);
-            // System.out.println(featureVector[i]);
             prediction += thetaVector[i] * featureVector[i];
+            
         }
 
-        return prediction + intercept;
+
+        
+        // if(prediction < 0){
+        //     return 0.0;
+        // }
+        //return prediction + 104237; <--- for 5 years
+        //return prediction + 110572; <--- for 5 years, no zero's
+
+        return prediction + 54206.27;
     }
-
-    public Double applyBookedAmounts(Double[] featureVector, double intercept){
-        //first coefficient must be one for linReg
-        assert featureVector[0] == 1.0;
-
-        //linReg function
-        double prediction = 0;
-        for(int i = 0; i < thetaVector.length; i++){
-            // System.out.println(i);
-            // System.out.println(featureVector[i]);
-            prediction += thetaVector[i] * featureVector[i];
-        }
-
-        return prediction + intercept;
-    }
-
-
-
 
     public double[] getThetas(){
         return Arrays.copyOf(thetaVector, thetaVector.length);
@@ -79,28 +71,24 @@ public class LinearRegressionFunction {
     }
 
 
-    public static LinearRegressionFunction train(LinearRegressionFunction targetFunction, List<Double[]> dataset, List<Double> labels, double alpha, int acvOrBooked, double acvIntercept, double bookedIntercept){
-        //acvOrBooked: 0 = acv, 1 = bookedAmount
-        //dataset is what is fed in, labels are the true outcomes
-        
+    public static LinearRegressionFunction train(LinearRegressionFunction targetFunction, List<Double[]> dataset, List<Double> labels, double alpha) {
         int m = dataset.size();
+        // System.out.println(m);
         double[] thetaVector = targetFunction.getThetas();
         double[] newThetaVector = new double[thetaVector.length];
 
-        // compute the new theta of each element of the theta array
-        for (int j = 0; j < thetaVector.length - 1; j++) {
+            // compute the new theta of each element of the theta array
+            for (int j = 0; j < thetaVector.length; j++) {
             // summarize the error gap * feature
+
+            // System.out.println(j);
             double sumErrors = 0;
             for (int i = 0; i < m; i++) {
                 Double[] featureVector = dataset.get(i);
-                double error = 0;
-                if(acvOrBooked == 0){
-                    error = targetFunction.applyACV(featureVector, acvIntercept) - labels.get(i);
-                }
-                else{
-                    error = targetFunction.applyBookedAmounts(featureVector, bookedIntercept) - labels.get(i);
-                }
+                // System.out.println(featureVector.length);
+                double error = targetFunction.apply(featureVector) - labels.get(i);
                 sumErrors += error * featureVector[j];
+                
             }
 
             // compute the new theta value
